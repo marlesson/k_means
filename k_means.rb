@@ -3,7 +3,7 @@ require 'descriptive_statistics'
 
 class KMeans
 
-  attr_reader :dataset, :dataset_normalized
+  attr_reader :dataset, :dataset_normalized, :means_point, :cluster
 
   MIN  = 0
   MAX  = 1
@@ -27,30 +27,70 @@ class KMeans
   end
 
   def run(k, ephocs = 300)
-    means_point = rand_means_point(k)
-    cluster     = {}
+    @means_point = rand_means_point(k)
+    @cluster     = {}
 
     ephocs.times do |e|
 
-      k.times.each{|k| cluster[k] = []}
+      k.times.each{|k| @cluster[k] = []}
 
       @dataset_normalized.each_with_index do |data, i|
-        dists = k.times.collect{|ki| distance(means_point[ki], data)}
+        dists = k.times.collect{|ki| distance(@means_point[ki], data)}
         ck    = dists.index(dists.min)
-        cluster[ck] << data
+        @cluster[ck] << data
       end
 
-      new_means_point = get_means_point(cluster)
-      
-      if new_means_point == means_point
+      new_means_point = get_means_point(@cluster)
+
+      if new_means_point == @means_point
+        @means_point = new_means_point
         break
       else
-        means_point = new_means_point
+        @means_point = new_means_point
       end
     end
 
-    cluster
+    @cluster
   end  
+
+  # Return the variance within clustes
+  def var_within_cluster
+
+    total_var = 0
+    @cluster.each do |k, data|
+      dists = data.collect{|d| distance(@means_point[k], d)**2}
+      var   = (dists.sum*1.0)/data.size
+
+      prob  = (data.size*1.0)/@dataset_normalized.size
+      total_var += (var * prob)
+    end
+
+    total_var
+  end
+
+  # Return the variance between clustes
+  def var_between_cluster
+    var = 0
+    
+    # Master Mean point 
+    master_mean_point = []
+    count_features.times do |t|
+      features_of_cluster = @means_point.collect{|d| d[t]}
+      master_mean_point << features_of_cluster.mean
+    end
+
+    # Variance
+    dists     = @means_point.collect{|point| distance(master_mean_point, point)**2}
+
+    var       = (dists.sum*1.0)/@means_point.size
+
+    var
+  end
+
+  # Maximize Variance between cluster and Minimize with cluster
+  def variance
+    var_between_cluster/var_within_cluster
+  end
 
   # Returns the distance of the characteristics between two objects
   # default: euclidian
@@ -156,11 +196,9 @@ class KMeans
     statistics = get_statistics_of_features
 
     k.times do |i|
-      point = []
-  
-      count_features.times do |t|
-        point << rand(statistics[t][MIN]..statistics[t][MAX])+rand
-      end
+      point = count_features.times.collect{|t| rand_point(t)}
+
+      redo if points.include? point
 
       points << point
     end
@@ -171,18 +209,27 @@ class KMeans
   def get_means_point(cluster)
     points  = []
 
-    cluster.each do |k, dataset|
+    cluster.each do |k, _dataset|
       point = []
-  
-      count_features.times do |t|
-        features_of_cluster = dataset.collect{|d| d[t]}
-        point << features_of_cluster.mean
+        
+      if _dataset.empty?
+        point = count_features.times.collect{|t| rand_point(t)}
+      else
+        count_features.times do |t|
+          features_of_cluster = _dataset.collect{|d| d[t]}
+          point << features_of_cluster.mean
+        end
       end
 
       points << point
     end
 
     points
+  end
+
+  def rand_point(f)
+    statistics = get_statistics_of_features
+    rand(statistics[f][MIN]..statistics[f][MAX])+rand
   end
 end
 
