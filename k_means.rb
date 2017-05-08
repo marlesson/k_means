@@ -59,7 +59,7 @@ class KMeans
     total_var = 0
     @cluster.each do |k, data|
       dists = data.collect{|d| distance(@means_point[k], d)**2}
-      var   = (dists.sum*1.0)/data.size
+      var   = (dists.sum*1.0)/(data.size)
 
       prob  = (data.size*1.0)/@dataset_normalized.size
       total_var += (var * prob)
@@ -80,16 +80,16 @@ class KMeans
     end
 
     # Variance
-    dists     = @means_point.collect{|point| distance(master_mean_point, point)**2}
-
-    var       = (dists.sum*1.0)/@means_point.size
+    k = -1
+    dists     = @means_point.collect{|point| k+=1; @cluster[k].size*distance(master_mean_point, point)**2}
+    var       = ((dists.sum*1.0)/@means_point.size)
 
     var
   end
 
   # Maximize Variance between cluster and Minimize with cluster
   def variance
-    var_between_cluster/var_within_cluster
+    (var_between_cluster*1.0/var_within_cluster)
   end
 
   # Returns the distance of the characteristics between two objects
